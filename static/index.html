@@ -4,61 +4,149 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Diario de Trading con IA</title>
+  <!-- Aplica el tema guardado ANTES de pintar, para evitar un parpadeo -->
+  <script>
+    try { var t = localStorage.getItem("tema"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/estilos.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
-  <div class="aviso" role="note">⚠️ Contenido educativo, no es asesoría de inversión.</div>
+  <!-- Íconos (se reutilizan con <use href="#i-...">) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-logo" viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-9"/><path d="M15 7h5v5"/></symbol>
+    <symbol id="i-pluma" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="i-libro" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5z"/><path d="M4 19.5A2.5 2.5 0 006.5 22H20v-5"/></symbol>
+    <symbol id="i-barras" viewBox="0 0 24 24"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="5" width="3" height="13" rx="1"/></symbol>
+    <symbol id="i-cerebro" viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M12 5a3 3 0 00-5.6-1.5A3 3 0 004 8a3 3 0 00-1 5 3 3 0 002 4.8A3 3 0 0012 19"/><path d="M12 5a3 3 0 015.6-1.5A3 3 0 0120 8a3 3 0 011 5 3 3 0 01-2 4.8A3 3 0 0112 19"/></symbol>
+    <symbol id="i-periodico" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9h4"/><path d="M10 6h8M10 10h8M10 14h5"/></symbol>
+    <symbol id="i-ajustes" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+    <symbol id="i-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-luna" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-foco" viewBox="0 0 24 24"><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></symbol>
+    <symbol id="i-hoja" viewBox="0 0 24 24"><path d="M11 20A7 7 0 019.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10z"/><path d="M2 21c0-3 1.9-5.4 5.1-6"/></symbol>
+    <symbol id="i-escudo" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+    <symbol id="i-editar" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4z"/></symbol>
+    <symbol id="i-nota" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol>
+    <symbol id="i-basura" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></symbol>
+    <symbol id="i-bajar" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+    <symbol id="i-subir" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+    <symbol id="i-datos" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.7-4 3-9 3s-9-1.3-9-3M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/></symbol>
+    <symbol id="i-chispa" viewBox="0 0 24 24"><path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/><path d="M19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z"/></symbol>
+    <symbol id="i-cerrar" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+    <symbol id="i-objetivo" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-sube" viewBox="0 0 24 24"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></symbol>
+    <symbol id="i-baja" viewBox="0 0 24 24"><path d="M23 18l-9.5-9.5-5 5L1 6"/><path d="M17 18h6v-6"/></symbol>
+    <symbol id="i-balanza" viewBox="0 0 24 24"><path d="M12 3v18M5 21h14M3 7h18M6 7l-3 7a4 4 0 006 0zM18 7l-3 7a4 4 0 006 0z"/></symbol>
+    <symbol id="i-caida" viewBox="0 0 24 24"><path d="M3 4v16h18"/><path d="M7 8l4 6 3-3 5 6"/></symbol>
+    <symbol id="i-lista" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  </svg>
 
-  <header>
-    <h1>Diario de Trading <span>con IA</span></h1>
-    <div class="filtros" title="Las operaciones reales y simuladas nunca se mezclan">
-      <label>Tipo
-        <select id="f-tipo"><option value="simulada">Simuladas</option><option value="real">Reales</option></select>
-      </label>
-      <label>Moneda
-        <select id="f-moneda"><option>MXN</option><option>USD</option></select>
-      </label>
+  <div class="aviso" role="note"><svg class="ic"><use href="#i-escudo"/></svg> Contenido educativo, no es asesoría de inversión.</div>
+
+  <div class="topbar">
+    <div class="topbar-in">
+      <div class="logo">
+        <div class="logo-marca"><svg class="ic"><use href="#i-logo"/></svg></div>
+        <div><h1>Diario de Trading</h1><small>Aprende de tus propias operaciones</small></div>
+      </div>
+      <div class="controles">
+        <div class="segmentado" id="seg-tipo" role="group" aria-label="Tipo de operaciones" title="Las operaciones reales y simuladas nunca se mezclan">
+          <span class="pastilla"></span>
+          <button type="button" data-v="simulada" aria-pressed="true">Simuladas</button>
+          <button type="button" data-v="real" aria-pressed="false">Reales</button>
+        </div>
+        <select id="f-moneda" class="mini" aria-label="Moneda"><option>MXN</option><option>USD</option></select>
+        <div class="segmentado icono" id="seg-tema" role="group" aria-label="Tema de color">
+          <span class="pastilla"></span>
+          <button type="button" data-v="light" title="Modo claro" aria-pressed="false"><svg class="ic"><use href="#i-sol"/></svg></button>
+          <button type="button" data-v="system" title="Igual que mi sistema" aria-pressed="true"><svg class="ic"><use href="#i-monitor"/></svg></button>
+          <button type="button" data-v="dark" title="Modo oscuro" aria-pressed="false"><svg class="ic"><use href="#i-luna"/></svg></button>
+        </div>
+      </div>
     </div>
-  </header>
-
-  <nav id="pestanas">
-    <button data-p="registrar" class="activa">Registrar</button>
-    <button data-p="diario">Diario</button>
-    <button data-p="panel">Panel</button>
-    <button data-p="conducta">Mi conducta</button>
-    <button data-p="noticias">Noticias</button>
-    <button data-p="ajustes">Ajustes y datos</button>
-  </nav>
-
-  <div id="pausa" class="pausa" hidden></div>
+    <nav id="pestanas">
+      <button data-p="registrar" class="activa"><svg class="ic"><use href="#i-pluma"/></svg>Registrar</button>
+      <button data-p="diario"><svg class="ic"><use href="#i-libro"/></svg>Diario</button>
+      <button data-p="panel"><svg class="ic"><use href="#i-barras"/></svg>Panel</button>
+      <button data-p="conducta"><svg class="ic"><use href="#i-cerebro"/></svg>Mi conducta</button>
+      <button data-p="noticias"><svg class="ic"><use href="#i-periodico"/></svg>Noticias</button>
+      <button data-p="ajustes"><svg class="ic"><use href="#i-ajustes"/></svg>Ajustes y datos</button>
+      <span class="indicador"></span>
+    </nav>
+  </div>
 
   <main>
+    <!-- Banner principal: cambia con cada pestaña -->
+    <section class="hero" id="hero">
+      <div class="hero-texto">
+        <span class="hero-etiqueta" id="hero-etiqueta"></span>
+        <h2 id="hero-titulo"></h2>
+        <p id="hero-texto"></p>
+      </div>
+      <div class="hero-chips" id="hero-chips"></div>
+    </section>
+
+    <div id="pausa" class="banner pausa" hidden>
+      <div class="ic-caja"><svg class="ic"><use href="#i-hoja"/></svg></div>
+      <div><b>Un momento para ti</b><p id="pausa-texto"></p></div>
+    </div>
+
+    <div class="banner tip" id="banner-tip">
+      <div class="ic-caja"><svg class="ic"><use href="#i-foco"/></svg></div>
+      <div class="tip-texto" id="tip"><b></b><p></p></div>
+      <button class="cerrar" id="cerrar-tip" title="Ocultar consejos" aria-label="Ocultar consejos"><svg class="ic"><use href="#i-cerrar"/></svg></button>
+    </div>
+
     <!-- REGISTRAR -->
     <section id="p-registrar" class="pestana activa">
-      <h2 id="titulo-form">Nueva operación</h2>
-      <p class="nota">Horas en tiempo del centro de México. Anota tu emoción <b>al entrar</b>: después del resultado se recuerda distinto.</p>
-      <form id="form-op">
+      <form id="form-op" autocomplete="off">
         <input type="hidden" name="id">
-        <div class="rejilla">
-          <label>Tipo<select name="tipo"><option value="simulada">Simulada</option><option value="real">Real</option></select></label>
-          <label>Ticker<input name="ticker" required placeholder="WALMEX" autocomplete="off"></label>
-          <label>Dirección<select name="direccion"><option value="compra">Compra (largo)</option><option value="venta">Venta en corto</option></select></label>
-          <label>Moneda<select name="moneda"><option>MXN</option><option>USD</option></select></label>
-          <label>Cantidad<input name="cantidad" type="number" step="any" min="0" required></label>
-          <label>Comisión total<input name="comision" type="number" step="any" min="0" value="0"></label>
-          <label>Entrada: fecha y hora<input name="entrada_fecha" type="datetime-local" required></label>
-          <label>Precio de entrada<input name="entrada_precio" type="number" step="any" required></label>
-          <label>Stop inicial<input name="stop_inicial" type="number" step="any" placeholder="vacío = sin stop"></label>
-          <label>Objetivo<input name="objetivo" type="number" step="any"></label>
-          <label>Salida: fecha y hora<input name="salida_fecha" type="datetime-local"></label>
-          <label>Precio de salida<input name="salida_precio" type="number" step="any" placeholder="vacío = abierta"></label>
-          <label>Stop final<input name="stop_final" type="number" step="any" placeholder="igual al inicial"></label>
-          <label>Emoción al entrar<select name="emocion" id="sel-emocion"><option value="">—</option></select></label>
-          <label class="ancho">Motivo de entrada<input name="motivo_entrada" placeholder="¿Por qué entraste? (según tu plan)"></label>
+        <div class="form-grupos">
+          <div class="tarjeta grupo escalon" style="--i:0">
+            <h3><span class="num">1</span>Activo</h3>
+            <div class="rejilla">
+              <label>Tipo<select name="tipo"><option value="simulada">Simulada</option><option value="real">Real</option></select></label>
+              <label>Ticker<input name="ticker" required placeholder="WALMEX"></label>
+              <label>Dirección<select name="direccion"><option value="compra">Compra (largo)</option><option value="venta">Venta en corto</option></select></label>
+              <label>Moneda<select name="moneda"><option>MXN</option><option>USD</option></select></label>
+            </div>
+          </div>
+          <div class="tarjeta grupo escalon" style="--i:1">
+            <h3><span class="num">2</span>Entrada y riesgo</h3>
+            <div class="rejilla">
+              <label class="ancho">Fecha y hora de entrada<input name="entrada_fecha" type="datetime-local" required></label>
+              <label>Precio de entrada<input name="entrada_precio" type="number" step="any" required></label>
+              <label>Cantidad<input name="cantidad" type="number" step="any" min="0" required></label>
+              <label>Stop inicial<input name="stop_inicial" type="number" step="any" placeholder="vacío = sin stop"></label>
+              <label>Objetivo<input name="objetivo" type="number" step="any"></label>
+            </div>
+            <div class="vista-previa" id="vista-previa"></div>
+          </div>
+          <div class="tarjeta grupo escalon" style="--i:2">
+            <h3><span class="num">3</span>Salida <span class="etiqueta neutral">opcional</span></h3>
+            <div class="rejilla">
+              <label class="ancho">Fecha y hora de salida<input name="salida_fecha" type="datetime-local"></label>
+              <label>Precio de salida<input name="salida_precio" type="number" step="any" placeholder="vacío = abierta"></label>
+              <label>Stop final<input name="stop_final" type="number" step="any" placeholder="igual al inicial"></label>
+              <label>Comisión total<input name="comision" type="number" step="any" min="0" value="0"></label>
+            </div>
+          </div>
+          <div class="tarjeta grupo escalon" style="--i:3">
+            <h3><span class="num">4</span>Tu cabeza al entrar</h3>
+            <div class="rejilla">
+              <label class="ancho">Emoción al entrar<select name="emocion" id="sel-emocion"><option value="">—</option></select></label>
+              <label class="ancho">Motivo de entrada<textarea name="motivo_entrada" rows="3" placeholder="¿Por qué entraste? ¿Qué regla de tu plan seguiste?"></textarea></label>
+            </div>
+          </div>
         </div>
         <div class="acciones">
-          <button type="submit" class="primario">Guardar</button>
+          <button type="submit" class="primario" id="btn-guardar"><svg class="ic"><use href="#i-pluma"/></svg><span id="txt-guardar">Guardar operación</span></button>
           <button type="button" id="cancelar-edicion" hidden>Cancelar edición</button>
           <span id="msg-form" class="msg"></span>
         </div>
@@ -67,75 +155,103 @@
 
     <!-- DIARIO -->
     <section id="p-diario" class="pestana">
-      <h2>Mis operaciones</h2>
+      <div class="encabezado-seccion">
+        <div><h2>Mis operaciones</h2><p class="nota" id="resumen-diario"></p></div>
+        <input id="buscar-op" placeholder="Buscar ticker o emoción…" style="max-width:260px">
+      </div>
       <div class="tabla-scroll"><table id="tabla-ops">
-        <thead><tr><th>#</th><th>Entrada</th><th>Ticker</th><th>Dir.</th><th>Cant.</th><th>Resultado</th><th>R</th><th>Emoción</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>Entrada</th><th>Ticker</th><th>Dirección</th><th class="num">Cant.</th><th class="num">Resultado</th><th class="num">R</th><th>Emoción</th><th></th></tr></thead>
         <tbody></tbody>
       </table></div>
       <dialog id="dlg-notas">
         <h3 id="notas-titulo"></h3>
         <ul id="lista-notas"></ul>
-        <textarea id="nota-texto" rows="3" placeholder="Reflexión después de cerrar..."></textarea>
+        <textarea id="nota-texto" rows="3" placeholder="Reflexión después de cerrar…"></textarea>
         <div class="acciones"><button id="guardar-nota" class="primario">Agregar nota</button><button id="cerrar-notas">Cerrar</button></div>
       </dialog>
     </section>
 
     <!-- PANEL -->
     <section id="p-panel" class="pestana">
-      <h2>Panel de estadísticas</h2>
       <div id="kpis" class="kpis"></div>
       <div class="graficas">
-        <div class="tarjeta"><h3>Curva de capital</h3><canvas id="g-curva"></canvas></div>
-        <div class="tarjeta"><h3>Resultado por activo</h3><canvas id="g-activo"></canvas></div>
-        <div class="tarjeta"><h3>Resultado por día de la semana</h3><canvas id="g-dia"></canvas></div>
+        <div class="tarjeta grande escalon" style="--i:2"><h3>Curva de capital</h3><p class="sub">Resultado acumulado, ordenado por fecha de salida</p><canvas id="g-curva" aria-label="Curva de capital"></canvas></div>
+        <div class="tarjeta escalon" style="--i:3"><h3>Resultado por activo</h3><p class="sub">Verde arriba de cero: ganancia · rojo abajo: pérdida</p><canvas id="g-activo" aria-label="Resultado por activo"></canvas></div>
+        <div class="tarjeta escalon" style="--i:4"><h3>Resultado por día de la semana</h3><p class="sub">Según el día en que entraste</p><canvas id="g-dia" aria-label="Resultado por día"></canvas></div>
       </div>
     </section>
 
     <!-- CONDUCTA -->
     <section id="p-conducta" class="pestana">
-      <h2>Mi conducta</h2>
-      <p class="nota">El código detecta los patrones con reglas fijas; la IA solo los explica. Cada hallazgo cita las operaciones en que se basa.</p>
-      <div id="patrones"></div>
-      <div class="acciones"><button id="btn-ia" class="primario">Explicar con IA</button><span id="msg-ia" class="msg"></span></div>
-      <div id="hallazgos"></div>
+      <div class="banner info">
+        <div class="ic-caja"><svg class="ic"><use href="#i-escudo"/></svg></div>
+        <div><b>Cómo funciona</b><p>Reglas fijas en código detectan los patrones; la IA solo los explica en lenguaje simple. Cada hallazgo cita las operaciones en que se basa: haz clic en un número para verla.</p></div>
+      </div>
+      <div id="patrones" class="patrones"></div>
+      <div class="acciones">
+        <button id="btn-ia" class="primario"><svg class="ic"><use href="#i-chispa"/></svg>Explicar con IA</button>
+        <span id="msg-ia" class="msg"></span>
+      </div>
+      <div id="hallazgos" class="patrones" style="margin-top:14px"></div>
     </section>
 
     <!-- NOTICIAS -->
     <section id="p-noticias" class="pestana">
-      <h2>Explicador de noticias</h2>
-      <p class="nota">Pega un titular o una nota (máx. 5,000 caracteres). Recibes un resumen simple; no predice precios ni dice qué comprar.</p>
-      <textarea id="noticia-texto" rows="7" maxlength="5000" placeholder="Banxico recorta su tasa de interés en 25 puntos base..."></textarea>
-      <div class="acciones"><button id="btn-noticia" class="primario">Explicar</button><span id="msg-noticia" class="msg"></span></div>
-      <div id="noticia-resultado"></div>
-      <h3>Glosario</h3>
-      <input id="buscar-glosario" placeholder="Buscar término...">
-      <dl id="glosario"></dl>
+      <div class="dos-columnas">
+        <div>
+          <div class="tarjeta">
+            <h3>Pega una noticia</h3>
+            <textarea id="noticia-texto" rows="8" maxlength="5000" placeholder="Banxico recorta su tasa de interés en 25 puntos base…"></textarea>
+            <div class="contador" id="contador">0 / 5,000</div>
+            <div class="acciones"><button id="btn-noticia" class="primario"><svg class="ic"><use href="#i-chispa"/></svg>Explicar</button><span id="msg-noticia" class="msg"></span></div>
+          </div>
+          <div id="noticia-resultado" style="margin-top:12px"></div>
+        </div>
+        <div class="tarjeta">
+          <h3>Glosario</h3>
+          <input id="buscar-glosario" placeholder="Buscar término…">
+          <dl id="glosario"></dl>
+        </div>
+      </div>
     </section>
 
     <!-- AJUSTES -->
     <section id="p-ajustes" class="pestana">
-      <h2>Mi plan</h2>
-      <form id="form-ajustes" class="rejilla">
-        <label>Moneda principal<select name="moneda"><option>MXN</option><option>USD</option></select></label>
-        <label>Riesgo máximo por operación (MXN)<input name="riesgo_max_mxn" type="number" step="any" min="0"></label>
-        <label>Riesgo máximo por operación (USD)<input name="riesgo_max_usd" type="number" step="any" min="0"></label>
-        <label class="ancho">Mis reglas<textarea name="reglas_plan" rows="4" placeholder="Ej.: siempre entro con stop; no opero después de 2 pérdidas seguidas..."></textarea></label>
-        <label class="ancho check"><input type="checkbox" name="enviar_motivos_a_ia"> Incluir mis motivos de entrada en el análisis con IA (por defecto no se envían)</label>
-        <div class="acciones ancho"><button class="primario">Guardar plan</button><span id="msg-ajustes" class="msg"></span></div>
-      </form>
-
-      <h2>Datos</h2>
-      <p class="nota">Tus datos se quedan en tu computadora (archivo <code>data/diario.db</code>, con respaldo automático al iniciar). Solo el paquete del análisis y el texto de noticias se envían al servicio de IA.</p>
-      <div class="acciones">
-        <a class="boton" href="/api/csv/exportar">Exportar CSV</a>
-        <label class="boton">Importar CSV<input type="file" id="csv-archivo" accept=".csv" hidden></label>
-        <button id="btn-demo">Cargar 200 operaciones de prueba</button>
-        <button id="btn-borrar" class="peligro">Borrar todo</button>
+      <div class="dos-columnas">
+        <form id="form-ajustes" class="tarjeta">
+          <h3>Mi plan</h3>
+          <div class="rejilla">
+            <label>Moneda principal<select name="moneda"><option>MXN</option><option>USD</option></select></label>
+            <label>Riesgo máx. por operación (MXN)<input name="riesgo_max_mxn" type="number" step="any" min="0"></label>
+            <label>Riesgo máx. por operación (USD)<input name="riesgo_max_usd" type="number" step="any" min="0"></label>
+            <label class="ancho">Mis reglas<textarea name="reglas_plan" rows="4" placeholder="Ej.: siempre entro con stop; no opero después de 2 pérdidas seguidas…"></textarea></label>
+            <label class="ancho check"><input type="checkbox" name="enviar_motivos_a_ia"> Incluir mis motivos de entrada en el análisis con IA (por defecto no se envían)</label>
+          </div>
+          <div class="acciones"><button class="primario">Guardar plan</button><span id="msg-ajustes" class="msg"></span></div>
+        </form>
+        <div>
+          <div class="tarjeta">
+            <h3>Tus datos</h3>
+            <p class="nota">Se quedan en tu computadora (<code>data/diario.db</code>, con respaldo automático al iniciar). Solo el paquete del análisis y el texto de noticias se envían al servicio de IA.</p>
+            <div class="acciones">
+              <a class="boton" href="/api/csv/exportar"><svg class="ic"><use href="#i-bajar"/></svg>Exportar CSV</a>
+              <label class="boton" style="flex-direction:row;color:var(--texto);font-size:14px"><svg class="ic"><use href="#i-subir"/></svg>Importar CSV<input type="file" id="csv-archivo" accept=".csv" hidden></label>
+              <button id="btn-demo"><svg class="ic"><use href="#i-datos"/></svg>Cargar 200 de prueba</button>
+              <button id="btn-borrar" class="peligro"><svg class="ic"><use href="#i-basura"/></svg>Borrar todo</button>
+            </div>
+            <pre id="msg-datos" class="msg"></pre>
+          </div>
+          <div class="banner info" style="margin-top:12px" id="banner-ia">
+            <div class="ic-caja"><svg class="ic"><use href="#i-chispa"/></svg></div>
+            <div><b>Estado de la IA</b><p id="estado-ia"></p></div>
+          </div>
+        </div>
       </div>
-      <pre id="msg-datos" class="msg"></pre>
-      <p class="nota" id="estado-ia"></p>
     </section>
   </main>
+
+  <footer>Diario de Trading con IA · Prototipo educativo · No es asesoría de inversión</footer>
+  <div id="toasts" aria-live="polite"></div>
 
   <script src="/static/glosario.js"></script>
   <script src="/static/app.js"></script>

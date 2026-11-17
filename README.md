@@ -74,6 +74,14 @@ Pruebas adversariales contra el modelo real (gastan llamadas; córrelas cuando c
 python -m evals.adversariales_ia
 ```
 
+## Interfaz
+
+- Modo claro, oscuro o igual al sistema (botones arriba a la derecha; se recuerda tu elección).
+- Banner principal por pestaña con tus cifras clave, consejos que rotan y aviso de pausa cuando aplica.
+- Animaciones suaves (cambio de pestaña, tarjetas, cifras que cuentan, avisos flotantes) que se
+  desactivan solas si tu sistema pide "reducir movimiento".
+- Gráficas con los colores del tema: verde/rojo para ganancia/pérdida, siempre con el monto con signo en el tooltip.
+
 ## Stack
 
 Python + FastAPI · SQLite · HTML/JS simple + Chart.js · API de Claude (modelo en `MODELO_IA`, por defecto `claude-opus-5-5`;
