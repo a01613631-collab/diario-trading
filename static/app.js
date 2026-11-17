@@ -13,6 +13,15 @@ const leer = (k) => { try { return localStorage.getItem(k); } catch (e) { return
 let tipoActual = "simulada";
 const filtro = () => ({ tipo: tipoActual, moneda: $("#f-moneda").value });
 let graficas = {};
+let monedas = [{ codigo: "MXN", nombre: "Peso mexicano" }];
+
+// Llena todos los selectores de moneda y los campos de riesgo máximo con la lista del servidor.
+function pintarMonedas() {
+  const opciones = (corto) => monedas.map((m) => `<option value="${esc(m.codigo)}" title="${esc(m.nombre)}">${esc(m.codigo)}${corto ? "" : " · " + esc(m.nombre)}</option>`).join("");
+  $$(".sel-moneda").forEach((sel) => { const v = sel.value; sel.innerHTML = opciones(sel.classList.contains("mini")); if (v) sel.value = v; });
+  $("#riesgos-moneda").innerHTML = monedas.map((m) => `<label>Riesgo máx. por operación (${esc(m.codigo)})` +
+    `<input name="riesgo_max_${esc(m.codigo.toLowerCase())}" type="number" step="any" min="0"></label>`).join("");
+}
 let ultimoResumen = null;
 
 async function api(url, opciones = {}) {
@@ -421,7 +430,8 @@ $("#buscar-glosario").addEventListener("input", pintarGlosario);
 // ---------- Ajustes y datos (RF6)
 async function cargarAjustes() {
   const a = await api("/api/ajustes"); const f = $("#form-ajustes");
-  f.moneda.value = a.moneda; f.riesgo_max_mxn.value = a.riesgo_max_mxn ?? ""; f.riesgo_max_usd.value = a.riesgo_max_usd ?? "";
+  f.moneda.value = a.moneda;
+  monedas.forEach((m) => { const k = "riesgo_max_" + m.codigo.toLowerCase(); f[k].value = a[k] ?? ""; });
   f.reglas_plan.value = a.reglas_plan; f.enviar_motivos_a_ia.checked = a.enviar_motivos_a_ia;
   const s = await api("/api/estado");
   $("#estado-ia").textContent = s.ia_configurada
@@ -433,8 +443,9 @@ $("#form-ajustes").addEventListener("submit", async (e) => {
   e.preventDefault(); const f = e.target;
   const num = (v) => v === "" ? null : Number(v);
   try {
-    await api("/api/ajustes", { method: "PUT", body: JSON.stringify({ moneda: f.moneda.value, riesgo_max_mxn: num(f.riesgo_max_mxn.value),
-      riesgo_max_usd: num(f.riesgo_max_usd.value), reglas_plan: f.reglas_plan.value, enviar_motivos_a_ia: f.enviar_motivos_a_ia.checked }) });
+    const datos = { moneda: f.moneda.value, reglas_plan: f.reglas_plan.value, enviar_motivos_a_ia: f.enviar_motivos_a_ia.checked };
+    monedas.forEach((m) => { const k = "riesgo_max_" + m.codigo.toLowerCase(); datos[k] = num(f[k].value); });
+    await api("/api/ajustes", { method: "PUT", body: JSON.stringify(datos) });
     mensaje($("#msg-ajustes"), ""); toast("Plan guardado.", "ok");
   } catch (err) { mensaje($("#msg-ajustes"), err.message, "error"); }
 });
@@ -462,11 +473,14 @@ $("#btn-borrar").addEventListener("click", async () => {
 // ---------- Inicio
 (async function () {
   const tema = leer("tema"); elegir($("#seg-tema"), tema === "light" || tema === "dark" ? tema : "system");
+  const s = await api("/api/estado");
+  if (s.monedas?.length) monedas = s.monedas;
+  pintarMonedas();
   try { const f = JSON.parse(leer("filtro") || "null"); if (f) { tipoActual = f.tipo; $("#f-moneda").value = f.moneda; } } catch (e) {}
+  if (!$("#f-moneda").value) $("#f-moneda").value = "MXN";
   elegir($("#seg-tipo"), tipoActual);
   if (leer("sin-consejos")) $("#banner-tip").hidden = true;
   mostrarConsejo(); setInterval(mostrarConsejo, 9000);
-  const s = await api("/api/estado");
   $("#sel-emocion").innerHTML += s.emociones.map((e) => `<option>${esc(e)}</option>`).join("");
   abrir(leer("pestana") || "registrar");
   vistaPrevia();

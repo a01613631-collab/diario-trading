@@ -7,6 +7,16 @@ from collections import defaultdict
 from datetime import datetime
 
 FORMATO_FECHA = "%Y-%m-%d %H:%M"
+# Monedas disponibles: MXN (local) + las 5 divisas más negociadas del mundo (encuesta BIS).
+# Las estadísticas siempre se separan por moneda; nunca se convierten entre sí.
+MONEDAS = {
+    "MXN": "Peso mexicano",
+    "USD": "Dólar estadounidense",
+    "EUR": "Euro",
+    "JPY": "Yen japonés",
+    "GBP": "Libra esterlina",
+    "CNY": "Yuan chino",
+}
 DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 
 

@@ -41,6 +41,9 @@ Para probar sin datos reales: en **Ajustes y datos → Cargar 200 operaciones de
 - Respuestas guardadas por huella (hash) para no pagar dos veces; tope diario de llamadas (`LIMITE_LLAMADAS_DIARIAS`).
 - Todas las respuestas de la IA (también las bloqueadas) quedan en la tabla `registro_ia` para revisarlas.
 - Reales y simuladas nunca se mezclan; las estadísticas se muestran por moneda, sin convertir.
+- Monedas: MXN más las 5 divisas más negociadas del mundo (USD, EUR, JPY, GBP, CNY), cada una con su
+  propio riesgo máximo en Ajustes. La lista vive en `app/calculos.py` (`MONEDAS`); para agregar otra,
+  súmala ahí y agrega su columna `riesgo_max_xxx` con una migración nueva en `app/db.py`.
 - Si rompes tu riesgo máximo 3 veces seguidas o se repite la revancha, aparece una sugerencia de pausa.
 - Respaldo automático de `data/diario.db` al iniciar (últimas 7 copias); versión de esquema para migrar sin perder datos.
 
@@ -67,6 +70,7 @@ python -m pytest -q
 - `tests/test_patrones.py`: 20 casos sintéticos (semilla fija) con sesgos plantados; el detector encuentra exactamente esos.
 - `tests/test_barreras.py`: 10 preguntas adversariales, filtro de salida, validación de ids.
 - `tests/test_api.py`: flujo completo con base temporal e IA simulada.
+- `tests/test_monedas.py`: monedas nuevas, separación por moneda y migración v1 → v2 sin perder notas.
 
 Pruebas adversariales contra el modelo real (gastan llamadas; córrelas cuando cambies el prompt):
 

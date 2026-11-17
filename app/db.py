@@ -82,6 +82,43 @@ MIGRACIONES = {
         respuesta TEXT
     );
     """,
+    # v2: más monedas (EUR, JPY, GBP, CNY). SQLite no permite cambiar un CHECK, así que se
+    # reconstruye la tabla copiando todo (procedimiento oficial de SQLite, con llaves foráneas
+    # apagadas para que las notas no se borren en cascada). La moneda la valida la app.
+    2: """
+    PRAGMA foreign_keys = OFF;
+    BEGIN;
+    CREATE TABLE operaciones_v2 (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tipo TEXT NOT NULL CHECK (tipo IN ('real','simulada')),
+        ticker TEXT NOT NULL,
+        direccion TEXT NOT NULL CHECK (direccion IN ('compra','venta')),
+        moneda TEXT NOT NULL CHECK (length(moneda) = 3),
+        entrada_fecha TEXT NOT NULL,
+        entrada_precio REAL NOT NULL,
+        salida_fecha TEXT,
+        salida_precio REAL,
+        cantidad REAL NOT NULL CHECK (cantidad > 0),
+        stop_inicial REAL,
+        stop_final REAL,
+        objetivo REAL,
+        comision REAL NOT NULL DEFAULT 0,
+        motivo_entrada TEXT,
+        emocion TEXT,
+        creada TEXT NOT NULL,
+        editada TEXT
+    );
+    INSERT INTO operaciones_v2 SELECT * FROM operaciones;
+    DROP TABLE operaciones;
+    ALTER TABLE operaciones_v2 RENAME TO operaciones;
+    ALTER TABLE ajustes ADD COLUMN riesgo_max_eur REAL;
+    ALTER TABLE ajustes ADD COLUMN riesgo_max_jpy REAL;
+    ALTER TABLE ajustes ADD COLUMN riesgo_max_gbp REAL;
+    ALTER TABLE ajustes ADD COLUMN riesgo_max_cny REAL;
+    PRAGMA user_version = 2;
+    COMMIT;
+    PRAGMA foreign_keys = ON;
+    """,
 }
 
 
@@ -118,3 +155,4 @@ def inicializar(ruta: Path | None = None) -> None:
             if numero > version:
                 con.executescript(MIGRACIONES[numero])
                 con.execute(f"PRAGMA user_version = {numero}")
+                con.commit()

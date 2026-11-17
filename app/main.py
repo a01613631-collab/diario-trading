@@ -13,6 +13,15 @@ from . import calculos, csv_io, db, ia, patrones, sintetico
 
 ESTATICOS = Path(__file__).resolve().parent.parent / "static"
 EMOCIONES = ["calma", "miedo", "euforia", "recuperar pérdida", "duda", "aburrimiento"]
+MONEDAS = list(calculos.MONEDAS)
+
+
+def _validar_moneda(v):
+    v = (v or "").strip().upper()
+    if v not in calculos.MONEDAS:
+        raise ValueError(f"moneda no válida; opciones: {', '.join(MONEDAS)}")
+    return v
+
 
 @asynccontextmanager
 async def _inicio(app):
@@ -29,7 +38,7 @@ class OperacionEntrada(BaseModel):
     tipo: Literal["real", "simulada"]
     ticker: str
     direccion: Literal["compra", "venta"]
-    moneda: Literal["MXN", "USD"]
+    moneda: str
     entrada_fecha: str
     entrada_precio: float
     salida_fecha: Optional[str] = None
@@ -49,6 +58,11 @@ class OperacionEntrada(BaseModel):
         if not v:
             raise ValueError("el ticker es obligatorio")
         return v
+
+    @field_validator("moneda")
+    @classmethod
+    def _moneda(cls, v):
+        return _validar_moneda(v)
 
     @field_validator("entrada_fecha", "salida_fecha")
     @classmethod
@@ -94,11 +108,20 @@ class OperacionEntrada(BaseModel):
 
 
 class Ajustes(BaseModel):
-    moneda: Literal["MXN", "USD"] = "MXN"
+    moneda: str = "MXN"
     riesgo_max_mxn: Optional[float] = None
     riesgo_max_usd: Optional[float] = None
+    riesgo_max_eur: Optional[float] = None
+    riesgo_max_jpy: Optional[float] = None
+    riesgo_max_gbp: Optional[float] = None
+    riesgo_max_cny: Optional[float] = None
     reglas_plan: str = ""
     enviar_motivos_a_ia: bool = False
+
+    @field_validator("moneda")
+    @classmethod
+    def _moneda(cls, v):
+        return _validar_moneda(v)
 
 
 class Nota(BaseModel):
@@ -111,7 +134,12 @@ class Noticia(BaseModel):
 
 class Filtro(BaseModel):
     tipo: Literal["real", "simulada"]
-    moneda: Literal["MXN", "USD"]
+    moneda: str
+
+    @field_validator("moneda")
+    @classmethod
+    def _moneda(cls, v):
+        return _validar_moneda(v)
 
 
 class ArchivoCSV(BaseModel):
@@ -268,9 +296,10 @@ def ver_ajustes():
 
 @app.put("/api/ajustes")
 def guardar_ajustes(a: Ajustes):
+    datos = a.model_dump()
+    datos["enviar_motivos_a_ia"] = int(a.enviar_motivos_a_ia)
     with db.conectar() as con:
-        con.execute("UPDATE ajustes SET moneda=?, riesgo_max_mxn=?, riesgo_max_usd=?, reglas_plan=?, enviar_motivos_a_ia=? WHERE id=1",
-                    (a.moneda, a.riesgo_max_mxn, a.riesgo_max_usd, a.reglas_plan, int(a.enviar_motivos_a_ia)))
+        con.execute(f"UPDATE ajustes SET {', '.join(f'{k}=?' for k in datos)} WHERE id=1", list(datos.values()))
     return {"ok": True}
 
 
@@ -319,7 +348,8 @@ def estado():
     import os
     return {"ia_configurada": bool(os.environ.get("ANTHROPIC_API_KEY")), "modelo": ia.MODELO,
             "llamadas_hoy": ia.llamadas_hoy(), "limite_diario": ia.LIMITE_DIARIO,
-            "aviso": ia.AVISO, "emociones": EMOCIONES}
+            "aviso": ia.AVISO, "emociones": EMOCIONES,
+            "monedas": [{"codigo": c, "nombre": n} for c, n in calculos.MONEDAS.items()]}
 
 
 app.mount("/static", StaticFiles(directory=ESTATICOS), name="static")

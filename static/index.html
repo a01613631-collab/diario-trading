@@ -61,7 +61,7 @@
           <button type="button" data-v="simulada" aria-pressed="true">Simuladas</button>
           <button type="button" data-v="real" aria-pressed="false">Reales</button>
         </div>
-        <select id="f-moneda" class="mini" aria-label="Moneda"><option>MXN</option><option>USD</option></select>
+        <select id="f-moneda" class="mini sel-moneda" aria-label="Moneda"><option>MXN</option></select>
         <div class="segmentado icono" id="seg-tema" role="group" aria-label="Tema de color">
           <span class="pastilla"></span>
           <button type="button" data-v="light" title="Modo claro" aria-pressed="false"><svg class="ic"><use href="#i-sol"/></svg></button>
@@ -114,7 +114,7 @@
               <label>Tipo<select name="tipo"><option value="simulada">Simulada</option><option value="real">Real</option></select></label>
               <label>Ticker<input name="ticker" required placeholder="WALMEX"></label>
               <label>Dirección<select name="direccion"><option value="compra">Compra (largo)</option><option value="venta">Venta en corto</option></select></label>
-              <label>Moneda<select name="moneda"><option>MXN</option><option>USD</option></select></label>
+              <label>Moneda<select name="moneda" class="sel-moneda"><option>MXN</option></select></label>
             </div>
           </div>
           <div class="tarjeta grupo escalon" style="--i:1">
@@ -221,9 +221,8 @@
         <form id="form-ajustes" class="tarjeta">
           <h3>Mi plan</h3>
           <div class="rejilla">
-            <label>Moneda principal<select name="moneda"><option>MXN</option><option>USD</option></select></label>
-            <label>Riesgo máx. por operación (MXN)<input name="riesgo_max_mxn" type="number" step="any" min="0"></label>
-            <label>Riesgo máx. por operación (USD)<input name="riesgo_max_usd" type="number" step="any" min="0"></label>
+            <label>Moneda principal<select name="moneda" class="sel-moneda"><option>MXN</option></select></label>
+            <div class="ancho rejilla" id="riesgos-moneda"></div>
             <label class="ancho">Mis reglas<textarea name="reglas_plan" rows="4" placeholder="Ej.: siempre entro con stop; no opero después de 2 pérdidas seguidas…"></textarea></label>
             <label class="ancho check"><input type="checkbox" name="enviar_motivos_a_ia"> Incluir mis motivos de entrada en el análisis con IA (por defecto no se envían)</label>
           </div>
