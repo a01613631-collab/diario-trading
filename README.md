@@ -19,6 +19,19 @@ el panel y el detector de patrones funcionan igual; solo las explicaciones dicen
 
 Para probar sin datos reales: en **Ajustes y datos → Cargar 200 operaciones de prueba** (o `python -m app.sintetico`).
 
+## Datos de ejemplo
+
+`ejemplos/operaciones_ejemplo.csv` trae 128 operaciones **fabricadas** (no son reales) para explorar la app:
+
+| Grupo | Operaciones | Qué vas a ver |
+|-------|-------------|---------------|
+| Simuladas · MXN | 70 cerradas | Revancha, subir tamaño tras perder, cortar ganancias, romper riesgo, sin stop |
+| Reales · MXN | 30 cerradas + 2 abiertas | Revancha y subir tamaño tras perder |
+| Reales · USD | 25 cerradas + 1 abierta | Cortar ganancias antes de tiempo |
+
+Para cargarlas: **Ajustes y datos → Importar CSV**. Para que aparezca "romper su regla de riesgo",
+pon en tu plan un riesgo máximo de **600 MXN** y **40 USD**. Importarlo dos veces no duplica nada.
+
 ## Qué incluye (requerimientos del MVP)
 
 | ID | Qué hace | Dónde |
