@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diario de Trading con IA</title>
+  <link rel="stylesheet" href="/static/estilos.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="aviso" role="note">⚠️ Contenido educativo, no es asesoría de inversión.</div>
+
+  <header>
+    <h1>Diario de Trading <span>con IA</span></h1>
+    <div class="filtros" title="Las operaciones reales y simuladas nunca se mezclan">
+      <label>Tipo
+        <select id="f-tipo"><option value="simulada">Simuladas</option><option value="real">Reales</option></select>
+      </label>
+      <label>Moneda
+        <select id="f-moneda"><option>MXN</option><option>USD</option></select>
+      </label>
+    </div>
+  </header>
+
+  <nav id="pestanas">
+    <button data-p="registrar" class="activa">Registrar</button>
+    <button data-p="diario">Diario</button>
+    <button data-p="panel">Panel</button>
+    <button data-p="conducta">Mi conducta</button>
+    <button data-p="noticias">Noticias</button>
+    <button data-p="ajustes">Ajustes y datos</button>
+  </nav>
+
+  <div id="pausa" class="pausa" hidden></div>
+
+  <main>
+    <!-- REGISTRAR -->
+    <section id="p-registrar" class="pestana activa">
+      <h2 id="titulo-form">Nueva operación</h2>
+      <p class="nota">Horas en tiempo del centro de México. Anota tu emoción <b>al entrar</b>: después del resultado se recuerda distinto.</p>
+      <form id="form-op">
+        <input type="hidden" name="id">
+        <div class="rejilla">
+          <label>Tipo<select name="tipo"><option value="simulada">Simulada</option><option value="real">Real</option></select></label>
+          <label>Ticker<input name="ticker" required placeholder="WALMEX" autocomplete="off"></label>
+          <label>Dirección<select name="direccion"><option value="compra">Compra (largo)</option><option value="venta">Venta en corto</option></select></label>
+          <label>Moneda<select name="moneda"><option>MXN</option><option>USD</option></select></label>
+          <label>Cantidad<input name="cantidad" type="number" step="any" min="0" required></label>
+          <label>Comisión total<input name="comision" type="number" step="any" min="0" value="0"></label>
+          <label>Entrada: fecha y hora<input name="entrada_fecha" type="datetime-local" required></label>
+          <label>Precio de entrada<input name="entrada_precio" type="number" step="any" required></label>
+          <label>Stop inicial<input name="stop_inicial" type="number" step="any" placeholder="vacío = sin stop"></label>
+          <label>Objetivo<input name="objetivo" type="number" step="any"></label>
+          <label>Salida: fecha y hora<input name="salida_fecha" type="datetime-local"></label>
+          <label>Precio de salida<input name="salida_precio" type="number" step="any" placeholder="vacío = abierta"></label>
+          <label>Stop final<input name="stop_final" type="number" step="any" placeholder="igual al inicial"></label>
+          <label>Emoción al entrar<select name="emocion" id="sel-emocion"><option value="">—</option></select></label>
+          <label class="ancho">Motivo de entrada<input name="motivo_entrada" placeholder="¿Por qué entraste? (según tu plan)"></label>
+        </div>
+        <div class="acciones">
+          <button type="submit" class="primario">Guardar</button>
+          <button type="button" id="cancelar-edicion" hidden>Cancelar edición</button>
+          <span id="msg-form" class="msg"></span>
+        </div>
+      </form>
+    </section>
+
+    <!-- DIARIO -->
+    <section id="p-diario" class="pestana">
+      <h2>Mis operaciones</h2>
+      <div class="tabla-scroll"><table id="tabla-ops">
+        <thead><tr><th>#</th><th>Entrada</th><th>Ticker</th><th>Dir.</th><th>Cant.</th><th>Resultado</th><th>R</th><th>Emoción</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <dialog id="dlg-notas">
+        <h3 id="notas-titulo"></h3>
+        <ul id="lista-notas"></ul>
+        <textarea id="nota-texto" rows="3" placeholder="Reflexión después de cerrar..."></textarea>
+        <div class="acciones"><button id="guardar-nota" class="primario">Agregar nota</button><button id="cerrar-notas">Cerrar</button></div>
+      </dialog>
+    </section>
+
+    <!-- PANEL -->
+    <section id="p-panel" class="pestana">
+      <h2>Panel de estadísticas</h2>
+      <div id="kpis" class="kpis"></div>
+      <div class="graficas">
+        <div class="tarjeta"><h3>Curva de capital</h3><canvas id="g-curva"></canvas></div>
+        <div class="tarjeta"><h3>Resultado por activo</h3><canvas id="g-activo"></canvas></div>
+        <div class="tarjeta"><h3>Resultado por día de la semana</h3><canvas id="g-dia"></canvas></div>
+      </div>
+    </section>
+
+    <!-- CONDUCTA -->
+    <section id="p-conducta" class="pestana">
+      <h2>Mi conducta</h2>
+      <p class="nota">El código detecta los patrones con reglas fijas; la IA solo los explica. Cada hallazgo cita las operaciones en que se basa.</p>
+      <div id="patrones"></div>
+      <div class="acciones"><button id="btn-ia" class="primario">Explicar con IA</button><span id="msg-ia" class="msg"></span></div>
+      <div id="hallazgos"></div>
+    </section>
+
+    <!-- NOTICIAS -->
+    <section id="p-noticias" class="pestana">
+      <h2>Explicador de noticias</h2>
+      <p class="nota">Pega un titular o una nota (máx. 5,000 caracteres). Recibes un resumen simple; no predice precios ni dice qué comprar.</p>
+      <textarea id="noticia-texto" rows="7" maxlength="5000" placeholder="Banxico recorta su tasa de interés en 25 puntos base..."></textarea>
+      <div class="acciones"><button id="btn-noticia" class="primario">Explicar</button><span id="msg-noticia" class="msg"></span></div>
+      <div id="noticia-resultado"></div>
+      <h3>Glosario</h3>
+      <input id="buscar-glosario" placeholder="Buscar término...">
+      <dl id="glosario"></dl>
+    </section>
+
+    <!-- AJUSTES -->
+    <section id="p-ajustes" class="pestana">
+      <h2>Mi plan</h2>
+      <form id="form-ajustes" class="rejilla">
+        <label>Moneda principal<select name="moneda"><option>MXN</option><option>USD</option></select></label>
+        <label>Riesgo máximo por operación (MXN)<input name="riesgo_max_mxn" type="number" step="any" min="0"></label>
+        <label>Riesgo máximo por operación (USD)<input name="riesgo_max_usd" type="number" step="any" min="0"></label>
+        <label class="ancho">Mis reglas<textarea name="reglas_plan" rows="4" placeholder="Ej.: siempre entro con stop; no opero después de 2 pérdidas seguidas..."></textarea></label>
+        <label class="ancho check"><input type="checkbox" name="enviar_motivos_a_ia"> Incluir mis motivos de entrada en el análisis con IA (por defecto no se envían)</label>
+        <div class="acciones ancho"><button class="primario">Guardar plan</button><span id="msg-ajustes" class="msg"></span></div>
+      </form>
+
+      <h2>Datos</h2>
+      <p class="nota">Tus datos se quedan en tu computadora (archivo <code>data/diario.db</code>, con respaldo automático al iniciar). Solo el paquete del análisis y el texto de noticias se envían al servicio de IA.</p>
+      <div class="acciones">
+        <a class="boton" href="/api/csv/exportar">Exportar CSV</a>
+        <label class="boton">Importar CSV<input type="file" id="csv-archivo" accept=".csv" hidden></label>
+        <button id="btn-demo">Cargar 200 operaciones de prueba</button>
+        <button id="btn-borrar" class="peligro">Borrar todo</button>
+      </div>
+      <pre id="msg-datos" class="msg"></pre>
+      <p class="nota" id="estado-ia"></p>
+    </section>
+  </main>
+
+  <script src="/static/glosario.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
