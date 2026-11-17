@@ -103,9 +103,16 @@ def estadisticas(operaciones: list[dict]) -> dict:
 
     por_activo: dict[str, float] = defaultdict(float)
     por_dia: dict[str, float] = defaultdict(float)
+    por_emocion: dict[str, float] = defaultdict(float)
+    por_fecha: dict[str, dict] = {}
     for op, res in zip(cerradas, resultados):
         por_activo[op["ticker"]] += res
         por_dia[DIAS[a_fecha(op["entrada_fecha"]).weekday()]] += res
+        por_emocion[op.get("emocion") or "sin anotar"] += res
+        # calendario: el día cuenta por la fecha de SALIDA (cuando el resultado se realiza)
+        dia = por_fecha.setdefault(op["salida_fecha"][:10], {"resultado": 0.0, "operaciones": 0})
+        dia["resultado"] += res
+        dia["operaciones"] += 1
 
     return {
         "total": len(operaciones),
@@ -124,5 +131,8 @@ def estadisticas(operaciones: list[dict]) -> dict:
         "sin_stop": sum(1 for op in operaciones if op.get("stop_inicial") is None),
         "por_activo": {k: round(v, 2) for k, v in sorted(por_activo.items())},
         "por_dia": {d: round(por_dia[d], 2) for d in DIAS if d in por_dia},
+        "por_emocion": {k: round(v, 2) for k, v in sorted(por_emocion.items())},
+        "por_fecha": {k: {"resultado": round(v["resultado"], 2), "operaciones": v["operaciones"]}
+                      for k, v in sorted(por_fecha.items())},
         "curva": curva_capital(cerradas),
     }

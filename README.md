@@ -99,6 +99,20 @@ python -m evals.adversariales_ia
   desactivan solas si tu sistema pide "reducir movimiento".
 - Gráficas con los colores del tema: verde/rojo para ganancia/pérdida, siempre con el monto con signo en el tooltip.
 
+### Más funciones de la interfaz
+
+- **Inicio**: termómetro de disciplina (0–100, % de reglas de tu plan cumplidas en tus últimas 20 operaciones),
+  tu semana en una frase, racha de días siguiendo tu plan, últimas 3 operaciones y el patrón más importante.
+- **Registro rápido**: fecha "ahora" automática, autocompletar tickers, emociones con un toque, `Ctrl+Enter` para guardar.
+- **Diario**: ordenar por columna, filtros (ganadoras, perdedoras, abiertas, sin stop, fuera de mi plan),
+  cerrar operaciones abiertas con solo la salida y "Deshacer" al borrar.
+- **Panel**: calendario de resultados (clic en un día para ver sus operaciones), resultado por emoción y ayuda en cada métrica.
+- **Mi conducta**: cuánto sumaron las operaciones de cada patrón contra el resto y dónde aparecieron sobre tu curva.
+- **Atajos**: `N` nueva, `/` buscar, `1`–`7` pestañas, `T` tema, `?` ayuda.
+- **Celular**: barra de pestañas abajo, botón flotante "+" y el diario en tarjetas.
+- **Instalable** (PWA): desde el navegador, "Instalar app" o "Agregar a pantalla de inicio".
+- **Primera vez**: recorrido de 3 pasos (riesgo máximo → primera operación o ejemplos → panel).
+
 ## Stack
 
 Python + FastAPI · SQLite · HTML/JS simple + Chart.js · API de Claude (modelo en `MODELO_IA`, por defecto `claude-opus-5-5`;

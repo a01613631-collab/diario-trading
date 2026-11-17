@@ -1,6 +1,7 @@
 """Servidor local (FastAPI). Escucha solo en 127.0.0.1."""
 from contextlib import asynccontextmanager
-from datetime import datetime
+import json
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -12,6 +13,7 @@ from pydantic import BaseModel, ValidationError, field_validator, model_validato
 from . import calculos, csv_io, db, ia, patrones, sintetico
 
 ESTATICOS = Path(__file__).resolve().parent.parent / "static"
+ARCHIVO_EJEMPLOS = Path(__file__).resolve().parent.parent / "ejemplos" / "operaciones_ejemplo.csv"
 EMOCIONES = ["calma", "miedo", "euforia", "recuperar pérdida", "duda", "aburrimiento"]
 MONEDAS = list(calculos.MONEDAS)
 
@@ -183,7 +185,12 @@ def _insertar(con, datos: dict) -> int:
 
 @app.get("/api/operaciones")
 def listar(tipo: Optional[str] = None, moneda: Optional[str] = None):
-    return _operaciones(tipo, moneda)
+    ops = _operaciones(tipo, moneda)
+    if tipo and moneda:  # dentro de un grupo, marca si cada operación cerrada siguió el plan
+        revision = patrones.revisar(ops, _ajustes())
+        for op in ops:
+            op["_cumple"] = all(revision[op["id"]].values()) if op["id"] in revision else None
+    return ops
 
 
 @app.post("/api/operaciones")
@@ -207,9 +214,68 @@ def editar(op_id: int, op: OperacionEntrada):
 
 @app.delete("/api/operaciones/{op_id}")
 def borrar(op_id: int):
+    """Borra y devuelve lo borrado, para que la interfaz pueda ofrecer "Deshacer"."""
     with db.conectar() as con:
+        fila = con.execute("SELECT * FROM operaciones WHERE id = ?", (op_id,)).fetchone()
+        if fila is None:
+            raise HTTPException(404, "operación no encontrada")
+        notas_borradas = [dict(n) for n in con.execute("SELECT * FROM notas WHERE operacion_id = ?", (op_id,))]
         con.execute("DELETE FROM operaciones WHERE id = ?", (op_id,))
-    return {"ok": True}
+    return {"ok": True, "operacion": dict(fila), "notas": notas_borradas}
+
+
+class Restaurar(BaseModel):
+    operacion: dict
+    notas: list[dict] = []
+
+
+@app.post("/api/operaciones/restaurar")
+def restaurar(r: Restaurar):
+    """Deshace un borrado: vuelve a insertar la operación con su mismo id y sus notas."""
+    op = r.operacion
+    try:
+        valida = OperacionEntrada(**{k: v for k, v in op.items() if k in OperacionEntrada.model_fields and v is not None})
+    except ValidationError as e:
+        raise HTTPException(422, "; ".join(err["msg"] for err in e.errors()))
+    datos = {**valida.model_dump(), "id": int(op["id"]), "creada": op.get("creada") or _ahora(), "editada": op.get("editada")}
+    with db.conectar() as con:
+        if con.execute("SELECT 1 FROM operaciones WHERE id = ?", (datos["id"],)).fetchone():
+            raise HTTPException(409, "esa operación ya existe")
+        con.execute(f"INSERT INTO operaciones ({', '.join(datos)}) VALUES ({', '.join('?' * len(datos))})", list(datos.values()))
+        for n in r.notas:
+            con.execute("INSERT INTO notas (operacion_id, texto, fecha) VALUES (?, ?, ?)", (datos["id"], n["texto"], n["fecha"]))
+    return {"ok": True, "id": datos["id"]}
+
+
+class Cierre(BaseModel):
+    salida_fecha: str
+    salida_precio: float
+    stop_final: Optional[float] = None
+
+
+@app.post("/api/operaciones/{op_id}/cerrar")
+def cerrar(op_id: int, c: Cierre):
+    """Cierra una operación abierta con solo la salida (y, si lo movió, el stop final)."""
+    with db.conectar() as con:
+        fila = con.execute("SELECT * FROM operaciones WHERE id = ?", (op_id,)).fetchone()
+    if fila is None:
+        raise HTTPException(404, "operación no encontrada")
+    datos = {k: v for k, v in dict(fila).items() if k in OperacionEntrada.model_fields}
+    datos.update(salida_fecha=c.salida_fecha, salida_precio=c.salida_precio)
+    if c.stop_final is not None:
+        datos["stop_final"] = c.stop_final
+    try:
+        op = OperacionEntrada(**{k: v for k, v in datos.items() if v is not None})
+    except ValidationError as e:
+        raise HTTPException(422, "; ".join(err["msg"].replace("Value error, ", "") for err in e.errors()))
+    return editar(op_id, op)
+
+
+@app.get("/api/tickers")
+def tickers():
+    """Tickers usados, del más frecuente al menos, para autocompletar."""
+    with db.conectar() as con:
+        return [f[0] for f in con.execute("SELECT ticker FROM operaciones GROUP BY ticker ORDER BY COUNT(*) DESC, ticker")]
 
 
 @app.delete("/api/todo")
@@ -234,6 +300,36 @@ def agregar_nota(op_id: int, nota: Nota):
     with db.conectar() as con:
         con.execute("INSERT INTO notas (operacion_id, texto, fecha) VALUES (?, ?, ?)", (op_id, nota.texto.strip(), _ahora()))
     return {"ok": True}
+
+
+# ------------------------------------------------------------------ Inicio
+
+@app.get("/api/inicio")
+def pantalla_inicio(tipo: str = Query(...), moneda: str = Query(...)):
+    ops = _operaciones(tipo, moneda)
+    ajustes = _ajustes()
+    disc = patrones.disciplina(ops, ajustes)
+    hace_7 = (datetime.now() - timedelta(days=7)).strftime(calculos.FORMATO_FECHA)
+    semana = [o for o in ops if o["entrada_fecha"] >= hace_7]
+    cerradas_semana = [o for o in semana if o["_resultado"] is not None]
+    deteccion = patrones.detectar(ops, ajustes)
+    principal = max(deteccion["patrones"], key=lambda p: p["proporcion"], default=None)
+    with db.conectar() as con:
+        total = con.execute("SELECT COUNT(*) FROM operaciones").fetchone()[0]
+        hallazgo = con.execute("SELECT fecha, texto FROM hallazgos_ia ORDER BY id DESC LIMIT 1").fetchone()
+    return {
+        "total_operaciones": total,  # en todos los grupos: sirve para saber si es la primera vez
+        "disciplina": {k: v for k, v in disc.items() if k != "cumple"},
+        "semana": {
+            "operaciones": len(semana), "cerradas": len(cerradas_semana),
+            "resultado": round(sum(o["_resultado"] for o in cerradas_semana), 2),
+            "siguieron_plan": sum(1 for o in cerradas_semana if disc["cumple"].get(o["id"])),
+        },
+        "ultimas": [{**o, "_cumple": disc["cumple"].get(o["id"])} for o in ops[:3]],
+        "patron_principal": None if principal is None else {k: principal[k] for k in
+                            ("clave", "nombre", "veces", "oportunidades", "proporcion", "costo", "promedio_patron", "promedio_resto")},
+        "ultimo_hallazgo": None if hallazgo is None else {"fecha": hallazgo["fecha"], "hallazgos": json.loads(hallazgo["texto"])},
+    }
 
 
 # ------------------------------------------------------------------ Estadísticas (RF3)
@@ -314,7 +410,17 @@ def exportar_csv():
 
 @app.post("/api/csv/importar")
 def importar_csv(archivo: ArchivoCSV):
-    filas, errores = csv_io.leer(archivo.contenido)
+    return _importar_texto(archivo.contenido)
+
+
+@app.post("/api/ejemplos")
+def cargar_ejemplos():
+    """Importa ejemplos/operaciones_ejemplo.csv (128 operaciones fabricadas)."""
+    return _importar_texto(ARCHIVO_EJEMPLOS.read_text(encoding="utf-8"))
+
+
+def _importar_texto(contenido: str) -> dict:
+    filas, errores = csv_io.leer(contenido)
     if errores:
         return {"importadas": 0, "duplicadas": 0, "errores": errores}
     existentes = {csv_io.clave(op) for op in _operaciones()}
@@ -358,3 +464,13 @@ app.mount("/static", StaticFiles(directory=ESTATICOS), name="static")
 @app.get("/")
 def inicio():
     return FileResponse(ESTATICOS / "index.html")
+
+
+@app.get("/manifest.webmanifest")
+def manifiesto():
+    return FileResponse(ESTATICOS / "manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/sw.js")
+def service_worker():
+    return FileResponse(ESTATICOS / "sw.js", media_type="application/javascript", headers={"Cache-Control": "no-cache"})

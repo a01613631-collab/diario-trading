@@ -131,6 +131,21 @@ def sin_stop(ops):
     return casos, len(ops)
 
 
+def costo(casos: list[dict], cerradas: list[dict]) -> dict:
+    """Cuánto sumaron las operaciones donde ocurrió el patrón, contra el resto.
+    La operación "culpable" de cada caso es el último id (p. ej. en revancha, la que entró tarde)."""
+    res = {op["id"]: resultado(op) for op in cerradas}
+    culpables = {c["ids"][-1] for c in casos}
+    resto = [r for i, r in res.items() if i not in culpables]
+    suma = sum(res[i] for i in culpables)
+    return {
+        "ids_patron": sorted(culpables),
+        "costo": round(suma, 2),
+        "promedio_patron": round(suma / len(culpables), 2) if culpables else None,
+        "promedio_resto": round(sum(resto) / len(resto), 2) if resto else None,
+    }
+
+
 def detectar(operaciones: list[dict], ajustes: dict) -> dict:
     """Corre todas las reglas sobre las operaciones cerradas de UN grupo (tipo + moneda)."""
     cerradas = [op for op in operaciones if esta_cerrada(op)]
@@ -153,7 +168,7 @@ def detectar(operaciones: list[dict], ajustes: dict) -> dict:
             patrones.append({
                 "clave": clave, "nombre": NOMBRES[clave], "veces": len(casos),
                 "oportunidades": oportunidades, "proporcion": round(proporcion, 3),
-                "casos": casos, "ids": ids,
+                "casos": casos, "ids": ids, **costo(casos, cerradas),
             })
     return {"suficientes": True, "cerradas": len(cerradas), "patrones": patrones}
 
@@ -173,3 +188,66 @@ def sugerir_pausa(operaciones: list[dict], ajustes: dict) -> str | None:
         return ("Varias de tus entradas recientes fueron poco después de una pérdida. "
                 "Tomarte un descanso antes de la siguiente operación puede ayudarte a decidir con calma.")
     return None
+
+
+# --------------------------------------------------------------- Disciplina
+
+REVISIONES = {
+    "con_stop": "Entró con stop",
+    "riesgo_ok": "Riesgo dentro de su máximo",
+    "sin_revancha": "Sin revancha",
+    "stop_respetado": "No movió el stop en contra",
+}
+
+
+def revisar(operaciones: list[dict], ajustes: dict) -> dict[int, dict[str, bool]]:
+    """Para cada operación cerrada, qué reglas del plan cumplió. Una regla que no aplica no aparece
+    (por ejemplo, el riesgo máximo si el usuario no lo definió para esa moneda)."""
+    cerradas = _ordenadas([op for op in operaciones if esta_cerrada(op)])
+    revanchas = {c["ids"][-1] for c in revancha(cerradas)[0]}
+    contra = {c["ids"][-1] for c in stop_en_contra(cerradas)[0]}
+    resultado_por_op = {}
+    for op in cerradas:
+        r = {"con_stop": op.get("stop_inicial") is not None, "sin_revancha": op["id"] not in revanchas}
+        maximo = ajustes.get("riesgo_max_" + op["moneda"].lower())
+        if maximo is not None and riesgo_inicial(op) is not None:
+            r["riesgo_ok"] = riesgo_inicial(op) <= maximo
+        if op.get("stop_inicial") is not None and op.get("stop_final") is not None:
+            r["stop_respetado"] = op["id"] not in contra
+        resultado_por_op[op["id"]] = r
+    return resultado_por_op
+
+
+def disciplina(operaciones: list[dict], ajustes: dict, ultimas: int = 20) -> dict:
+    """Puntaje 0-100: porcentaje de reglas cumplidas en las últimas `ultimas` operaciones cerradas.
+    Mide si sigues TU plan; no premia operar más ni ganar más."""
+    cerradas = _ordenadas([op for op in operaciones if esta_cerrada(op)])
+    revisiones = revisar(cerradas, ajustes)
+    recientes = cerradas[-ultimas:]
+    conteo = {k: [0, 0] for k in REVISIONES}
+    for op in recientes:
+        for clave, ok in revisiones[op["id"]].items():
+            conteo[clave][0] += ok
+            conteo[clave][1] += 1
+    cumplidas = sum(c[0] for c in conteo.values())
+    total = sum(c[1] for c in conteo.values())
+
+    # Racha: días seguidos (hacia atrás desde el último con operaciones) en que TODAS cumplieron el plan.
+    por_dia: dict[str, bool] = {}
+    for op in cerradas:
+        dia = op["salida_fecha"][:10]
+        por_dia[dia] = por_dia.get(dia, True) and all(revisiones[op["id"]].values())
+    racha = 0
+    for dia in sorted(por_dia, reverse=True):
+        if not por_dia[dia]:
+            break
+        racha += 1
+
+    return {
+        "puntaje": round(100 * cumplidas / total) if total else None,
+        "operaciones": len(recientes),
+        "revisiones": [{"clave": k, "nombre": REVISIONES[k], "cumplidas": c[0], "total": c[1]}
+                       for k, c in conteo.items() if c[1]],
+        "racha_dias": racha,
+        "cumple": {i: all(r.values()) for i, r in revisiones.items()},
+    }
